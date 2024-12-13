@@ -13,7 +13,7 @@ if (!fs.existsSync(pathToFolder)) {
 }
 
 if (fs.existsSync(pathToPrivKey) || fs.existsSync(pathToPubKey)) {
-	console.error('keys already exists');
+	console.error('keys already exist');
 	process.exit(1);
 }
 

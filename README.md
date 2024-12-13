@@ -12,7 +12,7 @@ node run.js
 
 2. Generate your RSA private key:
 ```sh
-node getKeys.js
+node genKeys.js
 ```
 Your public key is now saved in `pubkey.pem`. The full path will be written in the console after launch.
 
