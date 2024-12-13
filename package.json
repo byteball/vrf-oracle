@@ -1,0 +1,11 @@
+{
+  "name": "vrf-oracle",
+  "version": "0.1.0",
+  "private": false,
+  "engines": {
+    "node": ">=8"
+  },
+  "dependencies": {
+    "aabot": "git+https://github.com/byteball/aabot.git"
+  }
+}

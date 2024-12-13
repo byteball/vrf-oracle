@@ -1,0 +1,1 @@
+*/20 * * * * cd vrf-oracle; node check_daemon.js 1>>~/.config/vrf-oracle/check_daemon.log 2>>~/.config/vrf-oracle/check_daemon.err

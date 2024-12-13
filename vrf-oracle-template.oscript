@@ -1,0 +1,12 @@
+{
+	base_aa: "RAND2B4P22LFHNSZPXXNPH3F5Z4Y63IA",
+	params: {
+		vrf_providers: {
+			"your_oracle_address": "your_public_key",
+			"optional_another_oracle_address": "their_public_key",
+			"optional_yet_another_oracle_address": "their_public_key",
+			"...": "...",
+		},
+		finishing_provider: "your_oracle_address_or_one_of_their_addresses",
+	}
+}
