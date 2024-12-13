@@ -10,24 +10,13 @@ Oracle that generates verifiable random numbers.
 node run.js
 ```
 
-2. cd to the data folder, it's `~/.config/vrf-oracle` on Linux:
+2. Generate your RSA private key:
 ```sh
-cd ~/.config/vrf-oracle
+node genKeys.js
 ```
+Your public key is now saved in `pubkey.pem`. The full path will be written in the console after launch.
 
-3. Generate your RSA private key:
-```sh
-openssl genrsa -out privkey.pem
-```
-This will store your private key as `privkey.pem` in your data folder.
-
-4. Extract your public key from the private one:
-```sh
-openssl rsa -pubout -in privkey.pem -out pubkey.pem
-```
-Your public key is now saved in `pubkey.pem`.
-
-5. cd back to the sources root and run `run.js` again. Note your address in the line like this:
+4. cd back to the sources root and run `run.js` again. Note your address in the line like this:
 ```
 ====== my single address: UYBHEJNRNQCC3MGK5UO7T6YUHPWTSLXC
 ```
