@@ -32,6 +32,7 @@ function wait(ms) {
 
 async function handleConsumerEvent(consumer_aa, req_id) {
 	// simulate a request
+	console.log(`handleConsumerEvent(${consumer_aa}, ${req_id})`);
 	const aa_unlock = await aa_state.lock();
 	const consumer_vars = aa_state.getUpcomingAAStateVars(consumer_aa);
 	let upcomingStateVars = _.cloneDeep(aa_state.getUpcomingStateVars());
@@ -41,7 +42,7 @@ async function handleConsumerEvent(consumer_aa, req_id) {
 		console.log(`get_randomness_request for consumer ${consumer_aa} req ${req_id}`, req);
 	}
 	catch (e) {
-		console.log(`get_randomness_request failed`, e);
+		console.log(`get_randomness_request consumer ${consumer_aa} req ${req_id} failed`, e);
 		return aa_unlock();
 	}
 	aa_unlock();
@@ -64,7 +65,7 @@ async function onAAResponse(objAAResponse) {
 	if (bounced)
 		return console.log(`request ${trigger_unit} bounced with error`, response.error);
 	if (conf.consumer_aas.includes(aa_address)) {
-		console.log(`got response from consumer AA ${aa_address}`);
+		console.log(`got response from consumer AA ${aa_address}`, objAAResponse);
 		const req_id = getRequestId(objAAResponse);
 		if (req_id)
 			handleConsumerEvent(aa_address, req_id);
@@ -152,8 +153,6 @@ async function checkForMissedRequests() {
 
 async function startWatching() {
 	await loadLibs();
-
-
 
 	eventBus.on("aa_request_applied", onAARequest);
 	eventBus.on("aa_response_applied", onAAResponse);
