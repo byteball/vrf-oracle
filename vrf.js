@@ -66,8 +66,8 @@ async function onAAResponse(objAAResponse) {
 		return console.log(`request ${trigger_unit} bounced with error`, response.error);
 	if (conf.consumer_aas.includes(aa_address)) {
 		console.log(`got response from consumer AA ${aa_address}`, objAAResponse);
-		const req_id = getRequestId(objAAResponse);
-		if (req_id)
+		const req_ids = getRequestIds(objAAResponse);
+		for (let req_id of req_ids)
 			handleConsumerEvent(aa_address, req_id);
 	}
 }
@@ -83,24 +83,29 @@ async function onAARequest(objAARequest, arrResponses) {
 	console.log(`request from ${address} trigger ${objAARequest.unit.unit} affected AAs`, aas);
 	const aa = arrResponses[0].aa_address;
 	if (conf.consumer_aas.includes(aa)) {
-		const req_id = getRequestId(arrResponses[0]);
-		if (req_id)
+		const req_ids = getRequestIds(arrResponses[0]);
+		for (let req_id of req_ids)
 			handleConsumerEvent(aa, req_id);
 	}
 }
 
-function getRequestId(objAAResponse) {
+function getRequestIds(objAAResponse) {
 	const { aa_address, response: { responseVars } } = objAAResponse;
 	if (!responseVars) {
 		console.log(`no response vars from ${aa_address}`);
-		return null;
+		return [];
 	}
-	const { plot_num } = responseVars;
-	if (!plot_num) {
-		console.log(`no plot_num from ${aa_address}`);
-		return null;
+	const { plot_num, events } = responseVars;
+	if (plot_num)
+		return [plot_num];
+	if (events) {
+		const arrEvents = JSON.parse(events);
+		const plots = arrEvents.filter(({ type }) => type === 'reward').map(({ plot_num }) => plot_num);
+		console.log('reward plots', plots);
+		return plots;
 	}
-	return plot_num;
+	console.log(`no plot_num or events from ${aa_address}`, responseVars);
+	return [];
 }
 
 
