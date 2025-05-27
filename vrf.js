@@ -11,6 +11,7 @@ const storage = require("ocore/storage.js");
 const db = require("ocore/db.js");
 const walletGeneral = require("ocore/wallet_general.js");
 const constants = require("ocore/constants.js");
+const aa_composer = require("ocore/aa_composer.js");
 const formulaEvaluation = require("ocore/formula/evaluation.js");
 const { vrfGenerate } = require('ocore/signature.js')
 const { getAppDataDir } = require('ocore/desktop_app')
@@ -22,17 +23,49 @@ const aa_state = require('aabot/aa_state.js');
 
 const privkey = fs.readFileSync(path.join(getAppDataDir(), 'privkey.pem'), 'utf8')
 
+const finishingProviderTimeout = 600; // in seconds
+
+let bIAmFinishingProvider;
+let nonfinishingVrfProviders = new Set();
+let pendingRequests = {};
 
 function wait(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 
+function getRequest(consumer_aa, req_id) {
+	const key = `${consumer_aa}-${req_id}`;
+	let req = pendingRequests[key];
+	if (!req) {
+		req = { postedProviders: new Set() };
+		pendingRequests[key] = req;
+	}
+	return req;
+}
+
+function deleteRequest(consumer_aa, req_id) {
+	const key = `${consumer_aa}-${req_id}`;
+	delete pendingRequests[key];
+}
 
 
-async function handleConsumerEvent(consumer_aa, req_id) {
+async function handleConsumerEvent(consumer_aa, req_id, timestamp) {
 	// simulate a request
 	console.log(`handleConsumerEvent(${consumer_aa}, ${req_id})`);
+	if (bIAmFinishingProvider) {
+		let req = getRequest(consumer_aa, req_id);
+		const timeout = (timestamp + finishingProviderTimeout + 30) * 1000 - Date.now();
+		if (req.postedProviders.size < nonfinishingVrfProviders.size && timeout > 0) {
+			if (!timestamp) throw Error(`no timestamp`);
+			req.timeout = setTimeout(() => handleConsumerEvent(consumer_aa, req_id, timestamp), timeout);
+			return console.log(`will post randomness in ${timeout / 1000}s or when all non-finishing providers post`);
+		}
+		else {
+			clearTimeout(req.timeout);
+			deleteRequest(consumer_aa, req_id);
+		}
+	}
 	const aa_unlock = await aa_state.lock();
 	const consumer_vars = aa_state.getUpcomingAAStateVars(consumer_aa);
 	let upcomingStateVars = _.cloneDeep(aa_state.getUpcomingStateVars());
@@ -59,7 +92,7 @@ async function handleConsumerEvent(consumer_aa, req_id) {
 
 
 async function onAAResponse(objAAResponse) {
-	const { aa_address, trigger_unit, trigger_address, bounced, response } = objAAResponse;
+	const { aa_address, trigger_unit, trigger_address, bounced, response, timestamp } = objAAResponse;
 	if (bounced && trigger_address === operator.getAddress())
 		return console.log(`=== our request ${trigger_unit} bounced with error`, response.error);
 	if (bounced)
@@ -68,25 +101,46 @@ async function onAAResponse(objAAResponse) {
 		console.log(`got response from consumer AA ${aa_address}`, objAAResponse);
 		const req_ids = getRequestIds(objAAResponse);
 		for (let req_id of req_ids)
-			handleConsumerEvent(aa_address, req_id);
+			handleConsumerEvent(aa_address, req_id, timestamp);
+	}
+	else if (bIAmFinishingProvider && aa_address === conf.vrf_oracle_aa && nonfinishingVrfProviders.has(trigger_address)) {
+		console.log(`onAAResponse: received randomness from nonfinishing VRF oracle ${trigger_address}`);
+		const objTriggerJoint = await dag.readJoint(trigger_unit);
+		handleRandomnessFromNonfinishingProvider(objTriggerJoint.unit, aa_address, trigger_address);
 	}
 }
 
 
 async function onAARequest(objAARequest, arrResponses) {
-	const address = objAARequest.unit.authors[0].address;
-	if (address === operator.getAddress())
+	const trigger_address = objAARequest.unit.authors[0].address;
+	if (trigger_address === operator.getAddress())
 		return console.log(`skipping our own request`);
 	if (arrResponses[0].bounced)
-		return console.log(`trigger ${objAARequest.unit.unit} from ${address} will bounce`, arrResponses[0].response.error);
+		return console.log(`trigger ${objAARequest.unit.unit} from ${trigger_address} will bounce`, arrResponses[0].response.error);
 	const aas = arrResponses.map(r => r.aa_address);
-	console.log(`request from ${address} trigger ${objAARequest.unit.unit} affected AAs`, aas);
-	const aa = arrResponses[0].aa_address;
-	if (conf.consumer_aas.includes(aa)) {
+	console.log(`request from ${trigger_address} trigger ${objAARequest.unit.unit} affected AAs`, aas);
+	const { aa_address, timestamp } = arrResponses[0];
+	if (conf.consumer_aas.includes(aa_address)) {
 		const req_ids = getRequestIds(arrResponses[0]);
 		for (let req_id of req_ids)
-			handleConsumerEvent(aa, req_id);
+			handleConsumerEvent(aa_address, req_id, timestamp);
 	}
+	else if (bIAmFinishingProvider && aa_address === conf.vrf_oracle_aa && nonfinishingVrfProviders.has(trigger_address)) {
+		console.log(`onAARequest: received randomness from nonfinishing VRF oracle ${trigger_address}`);
+		handleRandomnessFromNonfinishingProvider(objAARequest.unit, aa_address, trigger_address);
+	}
+}
+
+function handleRandomnessFromNonfinishingProvider(objTriggerUnit, aa_address, trigger_address) {
+	const trigger = aa_composer.getTrigger(objTriggerUnit, aa_address);
+	const { req_id, consumer_aa } = trigger.data;
+	if (!req_id || !consumer_aa)
+		return console.log(`req_id or consumer_aa not found in nonfinishing provider trigger`, trigger);
+	let req = getRequest(consumer_aa, req_id);
+	req.postedProviders.add(trigger_address);
+	console.log(`${consumer_aa}-${req_id}: received randomness from ${req.postedProviders.size} out of ${nonfinishingVrfProviders.size} VRF oracles`);
+	if (req.postedProviders.size === nonfinishingVrfProviders.size)
+		handleConsumerEvent(consumer_aa, req_id, null);
 }
 
 function getRequestIds(objAAResponse) {
@@ -138,6 +192,20 @@ function initConsumers() {
 	}
 }
 
+async function initVrfOracle(vrf_oracle_aa) {
+	await aa_state.followAA(vrf_oracle_aa);
+	const definition = await dag.loadAA(vrf_oracle_aa);
+	const { params: { vrf_providers, finishing_provider } } = definition;
+	if (!vrf_providers[operator.getAddress()])
+		throw Error(`I'm not a member of VRF oracle AA ${vrf_oracle_aa}`);
+	bIAmFinishingProvider = operator.getAddress() === finishing_provider;
+	if (bIAmFinishingProvider) {
+		for (let address in vrf_providers)
+			if (address !== finishing_provider)
+				nonfinishingVrfProviders.add(address);
+	}
+}
+
 async function checkForMissedRequests() {
 	console.log(`checking for missed requests`);
 	for (let aa of conf.consumer_aas) {
@@ -149,7 +217,7 @@ async function checkForMissedRequests() {
 				if (plot.status === 'pending') {
 					console.log(`missed ${name}, will send randomness`);
 					const req_id = m[1];
-					await handleConsumerEvent(aa, req_id);
+					await handleConsumerEvent(aa, req_id, plot.ts);
 				}
 			}
 		}
@@ -163,7 +231,7 @@ async function startWatching() {
 	eventBus.on("aa_response_applied", onAAResponse);
 
 	await watchRandomnessConsumers();
-	await aa_state.followAA(conf.vrf_oracle_aa);
+	await initVrfOracle(conf.vrf_oracle_aa);
 	for (let address of conf.attestors)
 		walletGeneral.addWatchedAddress(address);
 
