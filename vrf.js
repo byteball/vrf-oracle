@@ -237,7 +237,7 @@ async function startWatching() {
 
 	initConsumers();
 	await checkForMissedRequests();
-
+	setInterval(checkForMissedRequests, 3 * 3600_000);
 }
 
 
