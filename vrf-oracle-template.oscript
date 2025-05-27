@@ -1,5 +1,5 @@
 {
-	base_aa: "RANDPVJ5W6XND7G2GUTOP3KCDZD5KUI7",
+	base_aa: "RANDDT4LE3RS7OO7GW3ULVPDITKTQVQA",
 	params: {
 		vrf_providers: {
 			"your_oracle_address": "your_public_key",
