@@ -195,7 +195,7 @@ function initConsumers() {
 async function initVrfOracle(vrf_oracle_aa) {
 	await aa_state.followAA(vrf_oracle_aa);
 	const definition = await dag.loadAA(vrf_oracle_aa);
-	const { params: { vrf_providers, finishing_provider } } = definition;
+	const [, { params: { vrf_providers, finishing_provider } }] = definition;
 	if (!vrf_providers[operator.getAddress()])
 		throw Error(`I'm not a member of VRF oracle AA ${vrf_oracle_aa}`);
 	bIAmFinishingProvider = operator.getAddress() === finishing_provider;
