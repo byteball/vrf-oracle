@@ -222,6 +222,7 @@ async function checkForMissedRequests() {
 			}
 		}
 	}
+	console.log(`done missed requests`);
 }
 
 async function startWatching() {
