@@ -31,18 +31,30 @@ exports.bNoPassphrase = true;
 
 exports.explicitStart = true;
 
+
+// override the below values in ~/.config/vrf-oracle/conf.json if necessary
+
 exports.lib_aas = [
 	'3LUPAHCQMJCQDKFVZB7GFKYJMHZ5BC67',
 ];
 
-exports.consumer_aas = [
-	'XUXPOHYSH6PHQBTM32ZIJX3RHWBJHX4L',
-];
+exports.consumer_aas = process.env.testnet
+	? [
+		'XUXPOHYSH6PHQBTM32ZIJX3RHWBJHX4L',
+	]
+	: [
+		'CITYC3WWO5DD2UM6HQR3H333RRTD253Q',
+	];
 
-exports.attestors = [
-	'EJC4A7WQGHEZEKW6RLO7F26SAR4LAQBU',
-];
+exports.attestors = process.env.testnet
+	? [
+		'EJC4A7WQGHEZEKW6RLO7F26SAR4LAQBU',
+	]
+	: [
+		'JBW7HT5CRBSF7J7RD26AYLQG6GZDPFPS', // telegram
+		'5KM36CFPBD2QJLVD65PHZG34WEM4RPY2', // discord
+	];
 
-exports.vrf_oracle_aa = 'insert your AA address';
+exports.vrf_oracle_aa = 'R2OVZFLVPBY65CNRL4W6GKK34XGOOQJS';
 
 console.log('finished vrf conf');
