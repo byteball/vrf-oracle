@@ -206,6 +206,19 @@ async function initVrfOracle(vrf_oracle_aa) {
 	}
 }
 
+async function withdrawBounceFees() {
+	console.log('withdrawBounceFees');
+	const vars = aa_state.getAAStateVars(conf.vrf_oracle_aa);
+	const bounce_fees = vars['bounce_fees_' + operator.getAddress()];
+	console.log('bounce fees', bounce_fees);
+	if (bounce_fees > 10e6) {
+		console.log('will withdraw bounce fees');
+		const unit = await dag.sendAARequest(conf.vrf_oracle_aa, { withdraw_bounce_fees: 1 });
+		console.log(`sent withdraw_bounce_fees`, unit);
+	}
+	console.log('done withdrawBounceFees');
+}
+
 async function checkForMissedRequests() {
 	console.log(`checking for missed requests`);
 	for (let aa of conf.consumer_aas) {
@@ -239,6 +252,9 @@ async function startWatching() {
 	initConsumers();
 	await checkForMissedRequests();
 	setInterval(checkForMissedRequests, 3 * 3600_000);
+
+	await withdrawBounceFees();
+	setInterval(withdrawBounceFees, 24 * 3600_000);
 }
 
 
