@@ -253,8 +253,8 @@ async function startWatching() {
 	await checkForMissedRequests();
 	setInterval(checkForMissedRequests, 3 * 3600_000);
 
-	await withdrawBounceFees();
-	setInterval(withdrawBounceFees, 24 * 3600_000);
+//	await withdrawBounceFees();
+//	setInterval(withdrawBounceFees, 24 * 3600_000);
 }
 
 
