@@ -43,7 +43,8 @@ exports.consumer_aas = process.env.testnet
 		'XUXPOHYSH6PHQBTM32ZIJX3RHWBJHX4L',
 	]
 	: [
-		'CITYC3WWO5DD2UM6HQR3H333RRTD253Q',
+	//	'CITYC3WWO5DD2UM6HQR3H333RRTD253Q',
+		'CITY22RWZTXX3UDPVQEDJLXM7BQNXCGP',
 	];
 
 exports.attestors = process.env.testnet
